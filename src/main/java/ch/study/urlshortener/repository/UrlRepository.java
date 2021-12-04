@@ -8,5 +8,4 @@ public interface UrlRepository extends MongoRepository<UrlInfo, String> {
 
   Optional<UrlInfo> findByShortUrl(String shortUrl);
 
-  Optional<UrlInfo> findByOriginUrl(String originUrl);
 }
