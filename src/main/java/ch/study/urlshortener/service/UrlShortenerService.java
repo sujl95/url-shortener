@@ -12,33 +12,36 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class UrlShortenerService {
 
-  private final IdGeneratorUtil idGenerator;
   private final UrlRepository urlRepository;
-  private final UrlConverterUtil urlConverterUtil;
 
+  @Transactional(readOnly = true)
   public String findByShortUrl(String shortUrl) {
-    urlRepository.findByShortUrl(shortUrl);
-
-    return "";
-  }
-
-  public UrlInfo findOrCreate(String originUrl) {
-    return urlRepository.findByOriginUrl(originUrl)
-        .orElseGet(() -> create(originUrl));
+    UrlInfo urlInfo = urlRepository.findByShortUrl(shortUrl).orElseThrow(RuntimeException::new);
+    return urlInfo.getOriginUrl();
   }
 
   @Transactional
   public UrlInfo create(String originUrl) {
-    String urlId = idGenerator.generate(originUrl);
-
-    String shortUrl = urlConverterUtil.makeShortUrl(urlId);
-
-    UrlInfo urlInfo = UrlInfo.builder()
-        .urlId(urlId)
-        .shortUrl(shortUrl)
+    String urlId = IdGeneratorUtil.generate(originUrl);
+    return urlRepository.save(UrlInfo.builder()
+        .shortUrl(getShortUrl(urlId))
         .originUrl(originUrl)
-        .build();
+        .urlId(urlId)
+        .build());
+  }
 
-    return urlRepository.save(urlInfo);
+  @Transactional(readOnly = true)
+  public String getShortUrl(String urlId) {
+    int pos = 0;
+    String shortUrl;
+    while (true) {
+      shortUrl = UrlConverterUtil.makeShortUrl(urlId, pos);
+      UrlInfo findUrlInfo = urlRepository.findByShortUrl(shortUrl).orElse(null);
+      if (findUrlInfo == null) {
+        break;
+      }
+      pos++;
+    }
+    return shortUrl;
   }
 }
